@@ -1,15 +1,11 @@
-package server
+package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
-	"os"
 
-	websocket "github.com/gorilla/websocket"
-)
-
-var (
-	logger *log.Logger
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
@@ -17,26 +13,47 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func main() {
-	logger = log.New(os.Stdout, "web ", log.LstdFlags)
-	server := http.Server{
-		Addr:    ":8080",
-		Handler: routes(),
+func homePage(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Home Page")
+}
+
+func reader(conn *websocket.Conn) {
+	for {
+		messageType, p, err := conn.ReadMessage()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		log.Println(string(p))
+
+		if err := conn.WriteMessage(messageType, p); err != nil {
+			log.Println(err)
+			return
+		}
 	}
-	server.ListenAndServe()
 }
-func routes() *http.ServeMux {
-	r := http.NewServeMux()
-	r.HandleFunc("/foo", foo)
-	return r
-}
-func foo(w http.ResponseWriter, r *http.Request) {
-	logger.Println("request to foo")
-}
-func socketHandler(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+
+func wsEndpoint(w http.ResponseWriter, r *http.Request) {
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+
+	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
-		return
 	}
+	log.Println("Client successfully connected...")
+
+	reader(ws)
+}
+
+func setupRoutes() {
+	http.HandleFunc("/", homePage)
+	http.HandleFunc("/ws", wsEndpoint)
+}
+
+func main() {
+	fmt.Println("Go Websockets")
+	setupRoutes()
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }

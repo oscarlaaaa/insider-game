@@ -24,12 +24,20 @@ func reader(conn *websocket.Conn) {
 			log.Println(err)
 			return
 		}
-		log.Println(string(p))
+		logDifferent(string(p))
 
 		if err := conn.WriteMessage(messageType, p); err != nil {
 			log.Println(err)
 			return
 		}
+	}
+}
+
+func logDifferent(message string) {
+	if message == "hello" {
+		log.Println("Hello was sent")
+	} else {
+		log.Println("ur mother was sent")
 	}
 }
 
